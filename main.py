@@ -118,21 +118,23 @@ def main():
         if image_vertices is None:
             continue
 
-        img_c = img.copy()
-        for i in range(len(image_vertices)):
-            vertex = tuple(image_vertices[i])
-            img_c = cv2.circle(img_c, vertex, 4, [0, 255, 0], thickness=-1)
-        show(img_c)
+        if DEBUG is True:
+            img_c = img.copy()
+            for i in range(len(image_vertices)):
+                vertex = tuple(image_vertices[i])
+                img_c = cv2.circle(img_c, vertex, 4, [0, 255, 0], thickness=-1)
+            show(img_c)
 
         if len(image_vertices) == 4:
             sorted_vertices = sort_corners(image_vertices)
 
-            img_lines = img.copy()
-            img_lines = cv2.line(img_lines, tuple(sorted_vertices[0, :]), tuple(sorted_vertices[1, :]), (0, 255, 0), 3)
-            img_lines = cv2.line(img_lines, tuple(sorted_vertices[1, :]), tuple(sorted_vertices[2, :]), (0, 255, 0), 3)
-            img_lines = cv2.line(img_lines, tuple(sorted_vertices[2, :]), tuple(sorted_vertices[3, :]), (0, 255, 0), 3)
-            img_lines = cv2.line(img_lines, tuple(sorted_vertices[3, :]), tuple(sorted_vertices[0, :]), (0, 255, 0), 3)
-            show(img_lines)
+            if DEBUG is True:
+                img_lines = img.copy()
+                img_lines = cv2.line(img_lines, tuple(sorted_vertices[0, :]), tuple(sorted_vertices[1, :]), (0, 255, 0), 3)
+                img_lines = cv2.line(img_lines, tuple(sorted_vertices[1, :]), tuple(sorted_vertices[2, :]), (0, 255, 0), 3)
+                img_lines = cv2.line(img_lines, tuple(sorted_vertices[2, :]), tuple(sorted_vertices[3, :]), (0, 255, 0), 3)
+                img_lines = cv2.line(img_lines, tuple(sorted_vertices[3, :]), tuple(sorted_vertices[0, :]), (0, 255, 0), 3)
+                show(img_lines)
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:

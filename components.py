@@ -1,4 +1,6 @@
 from lines import *
+from utils import show
+from parameters import DEBUG
 
 import numpy as np
 import cv2
@@ -40,13 +42,17 @@ class Component:
         min_ = np.min([h, w])
         th = np.int(np.round(min_ * 0.3))
         canny = cv2.Canny(self.mask, 50, 150)
-        lines = cv2.HoughLinesP(canny, 1, np.pi / 180., th, minLineLength=min_*0.05)
+        if DEBUG is True:
+            show(canny, 'edges')
+        lines = cv2.HoughLinesP(canny, 1, np.pi / 180., th)
         if lines is None or len(lines) == 0:
             return None
         lines = lines.reshape((-1, 2, 2))
-        out = np.zeros_like(self.mask)
-        for line in lines:
-            out = cv2.line(out, tuple(line[0]), tuple(line[1]), 255)
+        if DEBUG is True:
+            out = np.zeros_like(self.mask)
+            for line in lines:
+                out = cv2.line(out, tuple(line[0]), tuple(line[1]), 255)
+            show(out, 'hough')
         return lines
 
     def search_for_optimal_lines(self, lines):
@@ -83,17 +89,21 @@ class Component:
             max_ = np.argmax(distances)
             max_idx = idxs[max_]
             optimal_lines.append((current_lines[max_idx[0]], current_lines[max_idx[1]], distances[max_]))
-        out = np.zeros_like(self.mask)
-        for l in optimal_lines:
-            l1 = l[0]
-            l2 = l[1]
-            out = cv2.line(out, tuple(l1[0]), tuple(l1[1]), 255)
-            if l2 is not None:
-                out = cv2.line(out, tuple(l2[0]), tuple(l2[1]), 255)
+        if DEBUG is True:
+            out = np.zeros_like(self.mask)
+            for l in optimal_lines:
+                l1 = l[0]
+                l2 = l[1]
+                out = cv2.line(out, tuple(l1[0]), tuple(l1[1]), 255)
+                if l2 is not None:
+                    out = cv2.line(out, tuple(l2[0]), tuple(l2[1]), 255)
+            show(out, 'optimal lines')
         return optimal_lines
 
     def get_vertices(self, img):
         h, w = img.shape[:2]
+        if DEBUG is True:
+            show(self.mask, 'mask')
         lines = self.get_hough_lines()
         if lines is None:
             return None, None
