@@ -76,7 +76,7 @@ def connected_components_segmentation(img):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
