@@ -86,7 +86,7 @@ def compute_histogram(img):
         else:
             planes = [img]
 
-    histogram = np.zeros(h_w*d)
+    histogram = np.zeros(256*d) # e' corretto 256, non h_w
     for i in np.arange(len(planes)):
         p = planes[i]
         for val in np.unique(p):
@@ -155,6 +155,17 @@ def sort_corners(corners):
     return np.array([tl, tr, br, bl], dtype="float32")
 
 
+def find_distance_squared(p1, p2):
+    """
+    :param a: [p1x, p1y]
+    :param b: [p2x, p2y]
+    :return: Scalar. distance between p1 and p2
+    """
+    assert len(p1) == 2, 'len(p1) must be equal to 2'
+    assert len(p2) == 2, 'len(p2) must be equal to 2'
+    return ((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2)
+
+
 def find_distance(a, b):
     """
     :param a: [Ax, Ay]
@@ -204,8 +215,8 @@ def stretch_considering_perspective(length, angle1, angle2, k=1):
     #print("length: {}\nangle1: {}°\nangle2: {}°\nk: {}\nangle_tot: {}°\nratio: {}\nstretched: {}\n\n".format(length,radiant_to_degree(angle1),radiant_to_degree(angle2),k,radiant_to_degree(angle_tot),ratio,stretched))
     return stretched
 
-
-def rectify_image(img, corners):
+# TODO REMOVE THIS ONE
+def OLD_rectify_image(img, corners):
     # https://www.pyimagesearch.com/2014/05/05/building-pokedex-python-opencv-perspective-warping-step-5-6/
     # Compute the width of the new image
     corners = corners.astype(np.float32)
@@ -244,6 +255,15 @@ def rectify_image(img, corners):
 def check_if_picture(colored_img, greyscale_img, mask):
     picture = colored_img[mask == 255]
     hist = compute_histogram(picture)
+    
+    # -- CHECK IF WHITE STATUE
+    n = (hist[:256] + hist[256:512] + hist[512:768])
+    print('Sum n > 200', np.sum(n[STATUE_GRAY_HIST_THRESH:]))
+    print('Sum of n < 200', np.sum(n[:STATUE_GRAY_HIST_THRESH]))
+    if np.sum(n[STATUE_GRAY_HIST_THRESH:]) > np.sum(n[:STATUE_GRAY_HIST_THRESH]):
+        print("Not picture -> STATUE")
+        return False
+    
     ent = entropy(hist)
     if ent <= ENTROPY_SURE_NOT_PICTURE_THRESH:
         if DEBUG:
@@ -269,3 +289,81 @@ def create_non_repeated_couples_of_indexes(n_indexes):
     idxs = np.sort(idxs, axis=1)
     idxs = np.unique(idxs, axis=0)
     return idxs
+
+
+def find_intersection(l1_start, l1_end, l2_start, l2_end):
+    assert len(l1_start) == 2, 'len(l1_start) must be equal to 2'
+    assert len(l1_end) == 2, 'len(l1_end) must be equal to 2'
+    assert len(l2_start) == 2, 'len(l2_start) must be equal to 2'
+    assert len(l2_end) == 2, 'len(l2_end) must be equal to 2'
+    x1, y1 = l1_start
+    x2, y2 = l2_start
+    x3, y3 = l1_end
+    x4, y4 = l2_end
+
+    if x3 == x1:
+        x3 = x3 + 0.01
+    if x4 == x2:
+        x4 = x4 + 0.01
+    a = (y3 - y1) / (x3 - x1)
+    b = (y4 - y2) / (x4 - x2)
+    if a == b:
+        a = (0.01 + y3 - y1) / (x3 - x1)
+    x = (x1 * a - x2 * b - y1 + y2) / (a - b)
+    y = (x - x1) * a + y1
+    #return np.array([int(x), int(y)], dtype=np.int)
+    return np.round([x, y]).astype(np.int)
+
+
+def find_midpoint(p1, p2):
+    assert len(p1) == 2, 'len(p1) must be equal to 2'
+    assert len(p2) == 2, 'len(p2) must be equal to 2'
+    return np.round([(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2]).astype(np.int)
+    #return np.array([int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2)], dtype=np.int)
+
+
+def find_biggest_halfrectangle(p1, p2, p3, p4):
+    assert len(p1) == 2, 'len(p1) must be equal to 2'
+    assert len(p2) == 2, 'len(p2) must be equal to 2'
+    assert len(p3) == 2, 'len(p3) must be equal to 2'
+    assert len(p4) == 2, 'len(p4) must be equal to 2'
+    c = find_intersection(p1, p3, p2, p4)
+    v_inf = find_intersection(p1, p4, p2, p3)
+    h_inf = find_intersection(p1, p2, p3, p4)
+    m12 = find_intersection(p1, p2, c, v_inf)
+    m23 = find_intersection(p2, p3, c, h_inf)
+    m34 = find_intersection(p3, p4, c, v_inf)
+    m41 = find_intersection(p4, p1, c, h_inf)
+    bottom_side = False
+    left_side = False
+    if find_distance_squared(c, m12) < find_distance_squared(c, m34):
+        bottom_side = True
+    if find_distance_squared(c, m23) < find_distance_squared(c, m41):
+        left_side = True
+    if bottom_side and left_side:
+        return np.array([m41, c, m34, p4], dtype=np.int), RECTANGLE_SECTOR_BL
+    elif bottom_side and not left_side:
+        return np.array([c, m23, p3, m34], dtype=np.int), RECTANGLE_SECTOR_BR
+    elif not bottom_side and left_side:
+        return np.array([p1, m12, c, m41], dtype=np.int), RECTANGLE_SECTOR_TL
+    else: # not bottom_side and not left_side
+        return np.array([m12, p2, m23, c], dtype=np.int), RECTANGLE_SECTOR_TR
+
+
+def rectify_image(img, corners):
+    assert corners.shape == (4, 2), 'corners.shape must be (4, 2)'
+    corners = corners.astype(np.float32)
+    new_vertices = corners.copy()
+    for i in range(RECTIFY_IMAGE_ITER):
+        new_vertices, sector = find_biggest_halfrectangle(new_vertices[0], new_vertices[1],
+                                                          new_vertices[2], new_vertices[3])
+
+    w = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[0], new_vertices[1]),
+                                            find_distance(new_vertices[2], new_vertices[3])))
+    h = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[1], new_vertices[2]),
+                                            find_distance(new_vertices[3], new_vertices[0])))
+
+    new_vertices = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
+    #print("NEW rectify w/h: ", w/h)
+    mat = cv2.getPerspectiveTransform(corners, new_vertices)
+    return cv2.warpPerspective(img, mat, (w, h))
