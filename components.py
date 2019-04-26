@@ -43,7 +43,7 @@ class Component:
         th = np.int(np.round(min_ * 0.3))
         canny = cv2.Canny(self.mask, 50, 150)
         if DEBUG is True:
-            show(canny, 'edges')
+            show(canny)
         lines = cv2.HoughLinesP(canny, 1, np.pi / 180., th)
         if lines is None or len(lines) == 0:
             return None
@@ -52,7 +52,7 @@ class Component:
             out = np.zeros_like(self.mask)
             for line in lines:
                 out = cv2.line(out, tuple(line[0]), tuple(line[1]), 255)
-            show(out, 'hough')
+            # show(out, 'hough')
         return lines
 
     def search_for_optimal_lines(self, lines):
@@ -92,6 +92,7 @@ class Component:
             if n_lines == 1:
                 optimal_lines.append((current_lines[0], None, None))
                 continue
+            print('n lines\n', n_lines)
             idxs = create_non_repeated_couples_of_indexes(n_lines)
             couples = np.empty(shape=(len(idxs), 2, 2), dtype=np.float)
             couples[:, 0] = current_equations[idxs[:, 0]]
@@ -117,7 +118,7 @@ class Component:
     def get_vertices(self, img):
         h, w = img.shape[:2]
         if DEBUG is True:
-            show(self.mask, 'mask')
+            show(self.mask)
         lines = self.get_hough_lines()
         if lines is None:
             return None, None

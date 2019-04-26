@@ -2,7 +2,7 @@ from utils import *
 from htrdc import HTRDC, undistort
 from components import Component
 from parameters import *
-
+import os
 import numpy as np
 import cv2
 
@@ -115,8 +115,15 @@ def show_rectangle(img, sorted_vertices):
     show(img_lines)
 
 
-def main():
-    img, gray = read_undistorted_image_color_grayscale('./InputImages/110.jpg')
+def rect(img, mask):
+    img_parts = np.copy(img)
+    x, y, w, h = cv2.boundingRect(mask)
+    cv2.rectangle(img_parts, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    show(img_parts, 'Picture part')
+
+
+def main(name):
+    img, gray = read_undistorted_image_color_grayscale(name)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     components, gray = connected_components_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
@@ -135,18 +142,26 @@ def main():
         if image_vertices is None:
             continue
 
-        if DEBUG is True:
-            show_vertices(img, image_vertices)
 
         if len(image_vertices) == 4:
             sorted_vertices = sort_corners(image_vertices)
+            if DEBUG is True:
+                show_vertices(img, sorted_vertices)
+
             if DEBUG is True:
                 show_rectangle(img, sorted_vertices)
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:
                 show(final)
+            if component.picture_part_flag is True:
+                rect(img, component.mask)
 
 
 if __name__ == '__main__':
-    main()
+    folder = './test_images'
+    images = [img for img in os.listdir(folder)]
+    for name in images:
+        print('---------------')
+        print(name)
+        main('{}/{}'.format(folder, name))

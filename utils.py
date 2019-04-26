@@ -156,9 +156,7 @@ def sort_corners(corners):
 
     #trovo il punto in alto a sx
 
-
-
-    find_angle_with_horizontal(corners[0][0], corners[0][1])
+    #find_angle_with_horizontal(corners[0][0], corners[0][1])
 
 
 # TODO TMP REMOVE --start
@@ -290,8 +288,6 @@ def check_if_picture(colored_img, greyscale_img, mask):
     
     # -- CHECK IF WHITE STATUE
     n = (hist[:256] + hist[256:512] + hist[512:768])
-    print('Sum n > 200', np.sum(n[STATUE_GRAY_HIST_THRESH:]))
-    print('Sum of n < 200', np.sum(n[:STATUE_GRAY_HIST_THRESH]))
     if np.sum(n[STATUE_GRAY_HIST_THRESH:]) > np.sum(n[:STATUE_GRAY_HIST_THRESH]):
         print("Not picture -> STATUE")
         return False
@@ -396,6 +392,9 @@ def rectify_image(img, corners):
                                             find_distance(new_vertices[3], new_vertices[0])))
 
     new_vertices = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
+
+    print('new vertices ', new_vertices)
+    print('corners', corners)
     #print("NEW rectify w/h: ", w/h)
     mat = cv2.getPerspectiveTransform(corners, new_vertices)
     return cv2.warpPerspective(img, mat, (w, h))
