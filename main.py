@@ -98,6 +98,23 @@ def connected_components_segmentation(img):
     return components, img
 
 
+def show_vertices(img, image_vertices):
+    img_c = img.copy()
+    for i in range(len(image_vertices)):
+        vertex = tuple(image_vertices[i])
+        img_c = cv2.circle(img_c, vertex, 4, [0, 255, 0], thickness=-1)
+    show(img_c)
+
+
+def show_rectangle(img, sorted_vertices):
+    img_lines = img.copy()
+    cv2.line(img_lines , tuple(sorted_vertices[0,:]), tuple(sorted_vertices[1,:]), (0, 255, 0), 3)
+    cv2.line(img_lines , tuple(sorted_vertices[1,:]), tuple(sorted_vertices[2,:]), (0, 255, 0), 3)
+    cv2.line(img_lines , tuple(sorted_vertices[2,:]), tuple(sorted_vertices[3,:]), (0, 255, 0), 3)
+    cv2.line(img_lines , tuple(sorted_vertices[3,:]), tuple(sorted_vertices[0,:]), (0, 255, 0), 3)
+    show(img_lines)
+
+
 def main():
     img, gray = read_undistorted_image_color_grayscale('./InputImages/110.jpg')
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
@@ -119,22 +136,12 @@ def main():
             continue
 
         if DEBUG is True:
-            img_c = img.copy()
-            for i in range(len(image_vertices)):
-                vertex = tuple(image_vertices[i])
-                img_c = cv2.circle(img_c, vertex, 4, [0, 255, 0], thickness=-1)
-            show(img_c)
+            show_vertices(img, image_vertices)
 
         if len(image_vertices) == 4:
             sorted_vertices = sort_corners(image_vertices)
-
             if DEBUG is True:
-                img_lines = img.copy()
-                img_lines = cv2.line(img_lines, tuple(sorted_vertices[0, :]), tuple(sorted_vertices[1, :]), (0, 255, 0), 3)
-                img_lines = cv2.line(img_lines, tuple(sorted_vertices[1, :]), tuple(sorted_vertices[2, :]), (0, 255, 0), 3)
-                img_lines = cv2.line(img_lines, tuple(sorted_vertices[2, :]), tuple(sorted_vertices[3, :]), (0, 255, 0), 3)
-                img_lines = cv2.line(img_lines, tuple(sorted_vertices[3, :]), tuple(sorted_vertices[0, :]), (0, 255, 0), 3)
-                show(img_lines)
+                show_rectangle(img, sorted_vertices)
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:

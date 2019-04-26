@@ -4,6 +4,10 @@ import numpy as np
 from scipy.spatial import distance as dist
 import cv2
 
+RECTANGLE_SECTOR_TL = 0
+RECTANGLE_SECTOR_TR = 1
+RECTANGLE_SECTOR_BR = 2
+RECTANGLE_SECTOR_BL = 3
 
 def linear_stretch(img, a, b):
     """
