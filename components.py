@@ -1,5 +1,5 @@
 from lines import *
-from utils import show
+from utils import show, find_angle_with_horizontal, create_non_repeated_couples_of_indexes
 from parameters import DEBUG
 
 import numpy as np
@@ -68,17 +68,28 @@ class Component:
         for label in labels:
             current_equations = equations[clusters == label]
             current_lines = lines[clusters == label]
+            angles = np.empty(shape=len(current_lines), dtype=np.float)
+            for i, line in enumerate(current_lines):
+                if not np.all(line[0] == line[1]):
+                    angles[i] = find_angle_with_horizontal(line[0], line[1])
+            idxs = create_non_repeated_couples_of_indexes(len(angles))
+            angles_couples = np.empty(shape=(len(idxs), 2), dtype=np.float)
+            angles_couples[:, 0] = angles[idxs[:, 0]]
+            angles_couples[:, 1] = angles[idxs[:, 1]]
+            angles_differences = np.diff(angles_couples, axis=1)
+            keep_lines = np.argwhere(np.logical_and(angles_differences >= np.deg2rad(-10.),
+                                                    angles_differences <= np.deg2rad(10.)))
+            keep_idxs = idxs[keep_lines]
+            keep_idxs = np.unique(keep_idxs.ravel())
+            current_equations = current_equations[keep_idxs]
+            current_lines = current_lines[keep_idxs]
             current_lines_x = current_lines[:, :, 0]
             mean_x = np.mean(np.mean(current_lines_x, axis=1))
             n_lines = len(current_equations)
             if n_lines == 1:
                 optimal_lines.append((current_lines[0], None, None))
                 continue
-            idxs = np.arange(n_lines)
-            idxs = np.vstack((np.repeat(idxs, n_lines), np.tile(idxs, n_lines))).T
-            idxs = idxs[idxs[:, 0] != idxs[:, 1]]
-            idxs = np.sort(idxs, axis=1)
-            idxs = np.unique(idxs, axis=0)
+            idxs = create_non_repeated_couples_of_indexes(n_lines)
             couples = np.empty(shape=(len(idxs), 2, 2), dtype=np.float)
             couples[:, 0] = current_equations[idxs[:, 0]]
             couples[:, 1] = current_equations[idxs[:, 1]]

@@ -42,18 +42,18 @@ def draw_border_for_picture_parts(drawing):
     flag = False
 
     sm_column = np.sum(drawing, axis=0)
-    if sm_column[0] > 255*50:
+    if sm_column[0] > 0:
         drawing[:, :5] = 0
         flag = True
-    if sm_column[-1] > 255*50:
+    if sm_column[-1] > 0:
         drawing[:, -5:] = 0
         flag = True
 
     sm_row = np.sum(drawing, axis=1)
-    if sm_row[0] > 255*50:
+    if sm_row[0] > 0:
         drawing[:5, :] = 0
         flag = True
-    if sm_row[-1] > 255*50:
+    if sm_row[-1] > 0:
         drawing[-5:, :] = 0
         flag = True
 

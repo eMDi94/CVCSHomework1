@@ -246,7 +246,8 @@ def check_if_picture(colored_img, greyscale_img, mask):
     hist = compute_histogram(picture)
     ent = entropy(hist)
     if ent <= ENTROPY_SURE_NOT_PICTURE_THRESH:
-        print('Component is not a picture. Cause: ENTROPY')
+        if DEBUG:
+            print('Component is not a picture. Cause: ENTROPY')
         return False
     elif ent >= ENTROPY_SURE_PICTURE_THRESH:
         return True
@@ -256,5 +257,15 @@ def check_if_picture(colored_img, greyscale_img, mask):
         if mean < PICTURE_GRAY_THRESH:
             return True
         else:
-            print('Component is not a picture. Cause: GRAY')
+            if DEBUG:
+                print('Component is not a picture. Cause: GRAY')
             return False
+
+
+def create_non_repeated_couples_of_indexes(n_indexes):
+    idxs = np.arange(n_indexes)
+    idxs = np.vstack((np.repeat(idxs, n_indexes), np.tile(idxs, n_indexes))).T
+    idxs = idxs[idxs[:, 0] != idxs[:, 1]]
+    idxs = np.sort(idxs, axis=1)
+    idxs = np.unique(idxs, axis=0)
+    return idxs
