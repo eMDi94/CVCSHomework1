@@ -299,6 +299,7 @@ def find_biggest_halfrectangle(p1, p2, p3, p4):
 
 def rectify_image(img, corners):
     assert corners.shape == (4, 2), 'corners.shape must be (4, 2)'
+
     corners = corners.astype(np.float32)
     if DEBUG:
         print("rectify_img corners:", corners)

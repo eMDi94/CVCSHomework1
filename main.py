@@ -76,7 +76,7 @@ def connected_components_segmentation(img):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
@@ -122,12 +122,40 @@ def rect(img, mask):
     show(img_parts, 'Picture part')
 
 
+def segmentation_rect(img_segm_rect, component):
+    if component.picture_part_flag is False:
+        img_segm_rect[component.mask == 255] = (255, 20, 20)
+    else:
+        x, y, w, h = cv2.boundingRect(component.mask)
+        img_segm_rect[y:y+h,x:x+w] = (255, 20, 20)
+    return img_segm_rect
+
+
+def segmentation(img_segm, component):
+    if component.picture_part_flag is False:
+        img_segm[component.mask == 255] = (255, 20, 20)
+    else:
+        img_segm[component.mask == 255] = (100, 20, 0)
+    return img_segm
+
+
+def extract_picture_parts(img, component):
+    x, y, w, h = cv2.boundingRect(component.mask)
+    part = img[y:y+h,x:x+w]
+    return part
+
+
 def main(name):
     img, gray = read_undistorted_image_color_grayscale(name)
     show(img, name)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     components, gray = connected_components_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
+
+    img_segm = np.zeros_like(img)
+    img_segm[:, :] = (0, 240, 240)
+    img_segm_rect = np.zeros_like(img)
+    img_segm_rect[:, :] = (0, 240, 240)
 
     for component in components:
         is_contained, global_mask = component.check_if_contained_in_another_component(global_mask)
@@ -143,7 +171,6 @@ def main(name):
         if image_vertices is None:
             continue
 
-
         if len(image_vertices) == 4:
             sorted_vertices = sort_corners(image_vertices)
             if DEBUG is True:
@@ -152,11 +179,19 @@ def main(name):
             if DEBUG is True:
                 show_rectangle(img, sorted_vertices)
 
+            img_segm  = segmentation(img_segm, component)
+            img_segm_rect = segmentation_rect(img_segm_rect, component)
+
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:
                 show(final)
+
             if component.picture_part_flag is True:
                 rect(img, component.mask)
+                show( extract_picture_parts(img, component),'component')
+
+    show(img_segm, 'Segm')
+    show(img_segm_rect, 'Segm rect')
 
 
 if __name__ == '__main__':
@@ -165,7 +200,6 @@ if __name__ == '__main__':
     images = sorted(images)
     for name in images:
         print('\n------- START --------')
-        name = '106.jpg'
         print(name)
         main('{}/{}'.format(folder, name))
         print('\n------- END --------\n\n')
