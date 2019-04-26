@@ -154,12 +154,6 @@ def sort_corners(corners):
     print(corners[np.argsort([a0, a1, a2, a3]), :])
     return corners[np.argsort([a0, a1, a2, a3]), :]
 
-    #trovo il punto in alto a sx
-
-
-
-    find_angle_with_horizontal(corners[0][0], corners[0][1])
-
 
 # TODO TMP REMOVE --start
 def OLD_sort_corners(corners):
