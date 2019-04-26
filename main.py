@@ -124,6 +124,7 @@ def rect(img, mask):
 
 def main(name):
     img, gray = read_undistorted_image_color_grayscale(name)
+    show(img, name)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     components, gray = connected_components_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
@@ -164,6 +165,7 @@ if __name__ == '__main__':
     images = sorted(images)
     for name in images:
         print('\n------- START --------')
+        name = '106.jpg'
         print(name)
         main('{}/{}'.format(folder, name))
         print('\n------- END --------\n\n')

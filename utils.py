@@ -201,59 +201,6 @@ def radiant_to_degree(angle):
     return angle * 180 / np.pi
 
 
-def stretch_considering_perspective(length, angle1, angle2, k=1):
-    """
-    :return: stretched length
-    """
-    assert angle1 >= 0, 'angle1 value should be positive. use absolute value?'
-    assert angle2 >= 0, 'angle2 value should be positive. use absolute value?'
-    if angle1 > np.pi / 2:
-        angle1 = np.pi - angle1
-    if angle2 > np.pi / 2:
-        angle2 = np.pi - angle2
-    angle_tot = angle1 + angle2
-    ratio = np.abs(angle_tot / np.pi) * k
-    stretched = length * (1 + ratio)
-    #print("length: {}\nangle1: {}°\nangle2: {}°\nk: {}\nangle_tot: {}°\nratio: {}\nstretched: {}\n\n".format(length,radiant_to_degree(angle1),radiant_to_degree(angle2),k,radiant_to_degree(angle_tot),ratio,stretched))
-    return stretched
-
-# TODO REMOVE THIS ONE
-def OLD_rectify_image(img, corners):
-    # https://www.pyimagesearch.com/2014/05/05/building-pokedex-python-opencv-perspective-warping-step-5-6/
-    # Compute the width of the new image
-    corners = corners.astype(np.float32)
-    (tl, tr, br, bl) = corners
-    width_bottom = find_distance(br, bl)  # np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-    width_top = find_distance(tr, tl)  # np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-    # Compute the height of the new image
-    height_right = find_distance(tr, br)  # np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-    height_left = find_distance(tl, bl)  # np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-    if width_bottom == 0 or width_top == 0 or height_right == 0 or height_left == 0:
-        return None
-    # Take the maximum of the width and height values to reach final dimensions
-    maxWidth = max(int(width_bottom), int(width_top))
-    maxHeight = max(int(height_right), int(height_left))
-    # Find angles in respect to horizontal
-    angle_bottom = find_angle_with_horizontal(br, bl, length=width_bottom, use_negative=True)
-    angle_top = find_angle_with_horizontal(tr, tl, length=width_top, use_negative=True)
-    angle_left = find_angle_with_horizontal(bl, tl, length=height_left, use_negative=True)
-    angle_right = find_angle_with_horizontal(br, tr, length=height_right, use_negative=True)
-    # adjust maxWidth considering perspective warping
-    maxWidth = int(stretch_considering_perspective(maxWidth, np.abs(angle_bottom), np.abs(angle_top)))
-    maxHeight = int(stretch_considering_perspective(maxHeight, np.abs(angle_left - np.pi / 2),
-                                                               np.abs(angle_right - np.pi / 2)))
-    # Construct destination points which will be used to map the screen to a top-down,
-    final = np.array([
-            [0, 0],
-            [maxWidth - 1, 0],
-            [maxWidth - 1, maxHeight - 1],
-            [0, maxHeight - 1]], dtype = np.float32)
-    mat = cv2.getPerspectiveTransform(corners, final)
-    # Apply the transformation on the first image using cv2.warpPerspective()
-    dst = cv2.warpPerspective(img, mat, (maxWidth, maxHeight))
-    return dst
-
-
 def check_if_picture(colored_img, greyscale_img, mask):
     picture = colored_img[mask == 255]
     hist = compute_histogram(picture)
@@ -283,6 +230,7 @@ def check_if_picture(colored_img, greyscale_img, mask):
 
 
 def create_non_repeated_couples_of_indexes(n_indexes):
+    assert n_indexes > 0, 'n_indexes must be > 0'
     idxs = np.arange(n_indexes)
     idxs = np.vstack((np.repeat(idxs, n_indexes), np.tile(idxs, n_indexes))).T
     idxs = idxs[idxs[:, 0] != idxs[:, 1]]
@@ -302,16 +250,15 @@ def find_intersection(l1_start, l1_end, l2_start, l2_end):
     x4, y4 = l2_end
 
     if x3 == x1:
-        x3 = x3 + 0.01
+        x3 = x3 + 1
     if x4 == x2:
-        x4 = x4 + 0.01
+        x4 = x4 + 1
     a = (y3 - y1) / (x3 - x1)
     b = (y4 - y2) / (x4 - x2)
     if a == b:
-        a = (0.01 + y3 - y1) / (x3 - x1)
+        a = (1 + y3 - y1) / (x3 - x1)
     x = (x1 * a - x2 * b - y1 + y2) / (a - b)
     y = (x - x1) * a + y1
-    #return np.array([int(x), int(y)], dtype=np.int)
     return np.round([x, y]).astype(np.int)
 
 
@@ -353,20 +300,16 @@ def find_biggest_halfrectangle(p1, p2, p3, p4):
 def rectify_image(img, corners):
     assert corners.shape == (4, 2), 'corners.shape must be (4, 2)'
     corners = corners.astype(np.float32)
+    if DEBUG:
+        print("rectify_img corners:", corners)
     new_vertices = corners.copy()
     for i in range(RECTIFY_IMAGE_ITER):
         new_vertices, sector = find_biggest_halfrectangle(new_vertices[0], new_vertices[1],
                                                           new_vertices[2], new_vertices[3])
-
     w = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[0], new_vertices[1]),
                                             find_distance(new_vertices[2], new_vertices[3])))
     h = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[1], new_vertices[2]),
                                             find_distance(new_vertices[3], new_vertices[0])))
-
     new_vertices = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
-
-    print('new vertices ', new_vertices)
-    print('corners', corners)
-    #print("NEW rectify w/h: ", w/h)
     mat = cv2.getPerspectiveTransform(corners, new_vertices)
     return cv2.warpPerspective(img, mat, (w, h))

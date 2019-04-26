@@ -75,6 +75,8 @@ class Component:
             for i, line in enumerate(current_lines):
                 if not np.all(line[0] == line[1]):
                     angles[i] = find_angle_with_horizontal(line[0], line[1])
+            if len(angles) == 0:
+                continue
             idxs = create_non_repeated_couples_of_indexes(len(angles))
             angles_couples = np.empty(shape=(len(idxs), 2), dtype=np.float)
             angles_couples[:, 0] = angles[idxs[:, 0]]
@@ -92,9 +94,8 @@ class Component:
             if n_lines == 1:
                 optimal_lines.append((current_lines[0], None, None))
                 continue
-            # TODO REMOVE print('n lines\n', n_lines)
-            print('n lines\n', n_lines)
-            # TODO REMOVE fine
+            if n_lines == 0:
+                continue
             idxs = create_non_repeated_couples_of_indexes(n_lines)
             couples = np.empty(shape=(len(idxs), 2, 2), dtype=np.float)
             couples[:, 0] = current_equations[idxs[:, 0]]
@@ -151,6 +152,8 @@ class Component:
                 image_intersections.append([intersection[0, 0], intersection[0, 1]])
         image_intersections = np.array(image_intersections, dtype=np.int)
         real_intersections = np.array(real_intersections, dtype=np.float)
+        if len(np.unique(image_intersections, axis=0)) < 4:
+            return None, None
         return image_intersections, real_intersections
 
     def check_if_contained_in_another_component(self, global_mask):
