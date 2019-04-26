@@ -68,6 +68,9 @@ class Component:
         for label in labels:
             current_equations = equations[clusters == label]
             current_lines = lines[clusters == label]
+            if len(current_lines) == 1:
+                optimal_lines.append((current_lines[0], None, None))
+                continue
             angles = np.empty(shape=len(current_lines), dtype=np.float)
             for i, line in enumerate(current_lines):
                 if not np.all(line[0] == line[1]):
