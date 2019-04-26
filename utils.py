@@ -4,10 +4,12 @@ import numpy as np
 from scipy.spatial import distance as dist
 import cv2
 
+
 RECTANGLE_SECTOR_TL = 0
 RECTANGLE_SECTOR_TR = 1
 RECTANGLE_SECTOR_BR = 2
 RECTANGLE_SECTOR_BL = 3
+
 
 def linear_stretch(img, a, b):
     """
@@ -143,10 +145,15 @@ def sort_corners(corners):
     """
     # find the "center"
     c = find_intersection(corners[0], corners[2], corners[1], corners[3])
-    if not (corners[0][0] < c[0] < corners[2][0]) and not (corners[0][1] < c[1] < corners[2][1]):
-        c = find_intersection(corners[0], corners[1], corners[2], corners[3])
-        if not (corners[0][0] < c[0] < corners[1][0]) and not (corners[0][1] < c[1] < corners[1][1]):
+    print("c0213: ", c)
+    if not (min(corners[0][0], corners[2][0]) <= c[0] <= max(corners[0][0], corners[2][0])
+        and min(corners[0][1], corners[2][1]) <= c[1] <= max(corners[0][1], corners[2][1])):
+        c = find_intersection(corners[0], corners[1], corners[3], corners[2])
+        print("c0123: ", c)
+        if not (min(corners[0][0], corners[1][0]) <= c[0] <= max(corners[0][0], corners[1][0])
+            and min(corners[0][1], corners[1][1]) <= c[1] <= max(corners[0][1], corners[1][1])):
             c = find_intersection(corners[0], corners[3], corners[1], corners[2])
+            print("c0312: ", c)
     # get angle with each point
     a0 = find_angle_with_horizontal(c, corners[0])
     a1 = find_angle_with_horizontal(c, corners[1])
@@ -266,7 +273,6 @@ def find_midpoint(p1, p2):
     assert len(p1) == 2, 'len(p1) must be equal to 2'
     assert len(p2) == 2, 'len(p2) must be equal to 2'
     return np.round([(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2]).astype(np.int)
-    #return np.array([int((p1[0] + p2[0]) / 2), int((p1[1] + p2[1]) / 2)], dtype=np.int)
 
 
 def find_biggest_halfrectangle(p1, p2, p3, p4):
@@ -302,7 +308,7 @@ def rectify_image(img, corners):
 
     corners = corners.astype(np.float32)
     if DEBUG:
-        print("rectify_img corners:", corners)
+        print("rectify_img -- corners:\n", corners)
     new_vertices = corners.copy()
     for i in range(RECTIFY_IMAGE_ITER):
         new_vertices, sector = find_biggest_halfrectangle(new_vertices[0], new_vertices[1],
@@ -312,5 +318,7 @@ def rectify_image(img, corners):
     h = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[1], new_vertices[2]),
                                             find_distance(new_vertices[3], new_vertices[0])))
     new_vertices = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
+    if DEBUG:
+        print("rectify_img -- new_vertices:\n", new_vertices)
     mat = cv2.getPerspectiveTransform(corners, new_vertices)
     return cv2.warpPerspective(img, mat, (w, h))

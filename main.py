@@ -98,11 +98,13 @@ def connected_components_segmentation(img):
     return components, img
 
 
-def show_vertices(img, image_vertices):
+def show_vertices(img, image_vertices, with_order=True):
+    print("vertices:\n",image_vertices)
     img_c = img.copy()
+    colors = [(255, 0, 0), (0, 255, 0), (0, 255, 255), (0, 0, 255)] #B G Y R
     for i in range(len(image_vertices)):
         vertex = tuple(image_vertices[i])
-        img_c = cv2.circle(img_c, vertex, 4, [0, 255, 0], thickness=-1)
+        img_c = cv2.circle(img_c, vertex, 4, colors[i], thickness=-5-i)
     show(img_c)
 
 
@@ -172,9 +174,11 @@ def main(name):
             continue
 
         if len(image_vertices) == 4:
+            if DEBUG is True:
+                show_vertices(img, image_vertices, with_order=True)
             sorted_vertices = sort_corners(image_vertices)
             if DEBUG is True:
-                show_vertices(img, sorted_vertices)
+                show_vertices(img, sorted_vertices, with_order=True)
 
             if DEBUG is True:
                 show_rectangle(img, sorted_vertices)
