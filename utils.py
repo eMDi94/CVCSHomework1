@@ -136,6 +136,33 @@ def remove_small_connectedComponents(labeled_img, threshold):
 
 
 def sort_corners(corners):
+    """
+    Sort corners starting from top left one and going clockwise
+    :param corners:
+    :return: sorted corners
+    """
+    # trovo il "centro"
+    c = find_intersection(corners[0], corners[2], corners[1], corners[3])
+    if not (corners[0][0] < c[0] < corners[2][0]):
+        c = find_intersection(corners[0], corners[1], corners[2], corners[3])
+    # calcolo l'angolo con ogni punto del rettangolo
+    a0 = find_angle_with_horizontal(c, corners[0])
+    a1 = find_angle_with_horizontal(c, corners[1])
+    a2 = find_angle_with_horizontal(c, corners[2])
+    a3 = find_angle_with_horizontal(c, corners[3])
+    print(np.argsort([a0, a1, a2, a3]))
+    print(corners[np.argsort([a0, a1, a2, a3]), :])
+    return corners[np.argsort([a0, a1, a2, a3]), :]
+
+    #trovo il punto in alto a sx
+
+
+
+    find_angle_with_horizontal(corners[0][0], corners[0][1])
+
+
+# TODO TMP REMOVE --start
+def OLD_sort_corners(corners):
     # sort points based on their x
     xSorted = corners[np.argsort(corners[:, 0]), :]
     # grab the left-most and right-most points from the sorted
@@ -157,6 +184,7 @@ def sort_corners(corners):
     # return the coordinates in top-left, top-right,
     # bottom-right, and bottom-left order
     return np.array([tl, tr, br, bl], dtype="float32")
+# TODO TMP REMOVE --FINE
 
 
 def find_distance_squared(p1, p2):
