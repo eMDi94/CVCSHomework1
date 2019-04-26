@@ -76,7 +76,7 @@ def connected_components_segmentation(img):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
@@ -161,8 +161,10 @@ def main(name):
 if __name__ == '__main__':
     folder = './test_images'
     images = [img for img in os.listdir(folder)]
+    images = sorted(images)
     for name in images:
-        print('---------------')
+        print('\n------- START --------')
         print(name)
         main('{}/{}'.format(folder, name))
+        print('\n------- END --------\n\n')
 

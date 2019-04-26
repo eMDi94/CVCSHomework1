@@ -92,7 +92,9 @@ class Component:
             if n_lines == 1:
                 optimal_lines.append((current_lines[0], None, None))
                 continue
+            # TODO REMOVE print('n lines\n', n_lines)
             print('n lines\n', n_lines)
+            # TODO REMOVE fine
             idxs = create_non_repeated_couples_of_indexes(n_lines)
             couples = np.empty(shape=(len(idxs), 2, 2), dtype=np.float)
             couples[:, 0] = current_equations[idxs[:, 0]]

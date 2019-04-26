@@ -141,68 +141,40 @@ def sort_corners(corners):
     :param corners:
     :return: sorted corners
     """
-    # trovo il "centro"
+    # find the "center"
     c = find_intersection(corners[0], corners[2], corners[1], corners[3])
-    if not (corners[0][0] < c[0] < corners[2][0]):
+    if not (corners[0][0] < c[0] < corners[2][0]) and not (corners[0][1] < c[1] < corners[2][1]):
         c = find_intersection(corners[0], corners[1], corners[2], corners[3])
-    # calcolo l'angolo con ogni punto del rettangolo
+        if not (corners[0][0] < c[0] < corners[1][0]) and not (corners[0][1] < c[1] < corners[1][1]):
+            c = find_intersection(corners[0], corners[3], corners[1], corners[2])
+    # get angle with each point
     a0 = find_angle_with_horizontal(c, corners[0])
     a1 = find_angle_with_horizontal(c, corners[1])
     a2 = find_angle_with_horizontal(c, corners[2])
     a3 = find_angle_with_horizontal(c, corners[3])
-    print(np.argsort([a0, a1, a2, a3]))
-    print(corners[np.argsort([a0, a1, a2, a3]), :])
-    return corners[np.argsort([a0, a1, a2, a3]), :]
-
-    #trovo il punto in alto a sx
-
-    #find_angle_with_horizontal(corners[0][0], corners[0][1])
-
-
-# TODO TMP REMOVE --start
-def OLD_sort_corners(corners):
-    # sort points based on their x
-    xSorted = corners[np.argsort(corners[:, 0]), :]
-    # grab the left-most and right-most points from the sorted
-    # x-roodinate points
-    leftMost = xSorted[:2, :]
-    rightMost = xSorted[2:, :]
-    # now, sort the left-most coordinates according to their
-    # y-coordinates so we can grab the top-left and bottom-left
-    # points, respectively
-    leftMost = leftMost[np.argsort(leftMost[:, 1]), :]
-    (tl, bl) = leftMost
-    # now that we have the top-left coordinate, use it as an
-    # anchor to calculate the Euclidean distance between the
-    # top-left and right-most points; by the Pythagorean
-    # theorem, the point with the largest distance will be
-    # our bottom-right point
-    D = dist.cdist(tl[np.newaxis], rightMost, "euclidean")[0]
-    (br, tr) = rightMost[np.argsort(D)[::-1], :]
-    # return the coordinates in top-left, top-right,
-    # bottom-right, and bottom-left order
-    return np.array([tl, tr, br, bl], dtype="float32")
-# TODO TMP REMOVE --FINE
+    idxes = np.argsort([a0, a1, a2, a3])
+    return np.array([corners[idxes[2], :], corners[idxes[3], :], corners[idxes[0], :], corners[idxes[1], :]],
+                    dtype=np.int)
 
 
 def find_distance_squared(p1, p2):
     """
-    :param a: [p1x, p1y]
-    :param b: [p2x, p2y]
-    :return: Scalar. distance between p1 and p2
+    :param p1: [p1x, p1y]
+    :param p2: [p2x, p2y]
+    :return: Scalar. squared distance between p1 and p2
     """
     assert len(p1) == 2, 'len(p1) must be equal to 2'
     assert len(p2) == 2, 'len(p2) must be equal to 2'
     return ((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2)
 
 
-def find_distance(a, b):
+def find_distance(p1, p2):
     """
-    :param a: [Ax, Ay]
-    :param b: [Bx, By]
-    :return: Scalar. distance between A and B
+    :param p1: [p1x, p1y]
+    :param p2: [p2x, p2y]
+    :return: Scalar. distance between p1 and p2
     """
-    return np.sqrt(((a[0] - b[0]) ** 2) + ((a[1] - b[1]) ** 2))
+    return np.sqrt(find_distance_squared(p1, p2))
 
 
 def find_angle_with_horizontal(a, b, length=None, use_negative=False):
