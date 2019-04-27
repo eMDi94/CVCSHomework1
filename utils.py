@@ -145,15 +145,12 @@ def sort_corners(corners):
     """
     # find the "center"
     c = find_intersection(corners[0], corners[2], corners[1], corners[3])
-    print("c0213: ", c)
     if not (min(corners[0][0], corners[2][0]) <= c[0] <= max(corners[0][0], corners[2][0])
         and min(corners[0][1], corners[2][1]) <= c[1] <= max(corners[0][1], corners[2][1])):
         c = find_intersection(corners[0], corners[1], corners[3], corners[2])
-        print("c0123: ", c)
         if not (min(corners[0][0], corners[1][0]) <= c[0] <= max(corners[0][0], corners[1][0])
             and min(corners[0][1], corners[1][1]) <= c[1] <= max(corners[0][1], corners[1][1])):
             c = find_intersection(corners[0], corners[3], corners[1], corners[2])
-            print("c0312: ", c)
     # get angle with each point
     a0 = find_angle_with_horizontal(c, corners[0])
     a1 = find_angle_with_horizontal(c, corners[1])
@@ -215,7 +212,8 @@ def check_if_picture(colored_img, greyscale_img, mask):
     # -- CHECK IF WHITE STATUE
     n = (hist[:256] + hist[256:512] + hist[512:768])
     if np.sum(n[STATUE_GRAY_HIST_THRESH:]) > np.sum(n[:STATUE_GRAY_HIST_THRESH]):
-        print("Not picture -> STATUE")
+        if DEBUG:
+            print("Not picture -> STATUE")
         return False
     
     ent = entropy(hist)

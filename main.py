@@ -60,31 +60,62 @@ def draw_border_for_picture_parts(drawing):
     return drawing, flag
 
 
-def connected_components_segmentation(img):
-    img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,
+def image_segmentation(gray):
+    """
+    :param gray: grayscale image
+    :return: components, processed grayscale image
+    """
+    gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,
                                 ADAPTIVE_THRESHOLD_KERNEL_SIZE, ADAPTIVE_THRESHOLD_C)
-    img = cv2.medianBlur(img, 3)
-    img = erode_dilate(img)
+    gray = cv2.medianBlur(gray, 3)
+    gray = erode_dilate(gray)
 
-    _, labeled_img = cv2.connectedComponentsWithAlgorithm(img, 8, cv2.CV_32S, cv2.CCL_GRANA)
+    _, labeled_img = cv2.connectedComponentsWithAlgorithm(gray, 8, cv2.CV_32S, cv2.CCL_GRANA)
     labels = np.unique(labeled_img)
     labels = labels[labels != 0]
-
-    components = []
+    intermediate_global_mask = np.zeros_like(labeled_img, dtype=np.uint8)
     for label in labels:
         mask = np.zeros_like(labeled_img, dtype=np.uint8)
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
-        drawing = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+        hull_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
         for i in range(len(contours)):
-            drawing = cv2.drawContours(drawing, hull, i, 255, -1, 8)
+            hull_mask = cv2.drawContours(hull_mask, hull, i, 255, -1, 8)
 
-        single_component, flag = draw_border_for_picture_parts(drawing)
+        intermediate_global_mask = np.clip(intermediate_global_mask + hull_mask, 0, 255)
+    return connected_components_segmentation(intermediate_global_mask), gray
+
+
+def connected_components_segmentation(intermediate_global_mask):
+    """
+    :param intermediate_global_mask: black and white image
+    :return: components
+    """
+    _, labeled_img = cv2.connectedComponentsWithAlgorithm(intermediate_global_mask, 8, cv2.CV_32S, cv2.CCL_GRANA)
+    labels = np.unique(labeled_img)
+    labels = labels[labels != 0]
+
+    components = []
+
+    for label in labels:
+        mask = np.zeros_like(labeled_img, dtype=np.uint8)
+        mask[labeled_img == label] = 255
+
+        # Compute the convex hull
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        hull = []
+        for cnt in contours:
+            hull.append(cv2.convexHull(cnt, False))
+        hull_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+        for i in range(len(contours)):
+            hull_mask = cv2.drawContours(hull_mask, hull, i, 255, -1, 8)
+
+        single_component, flag = draw_border_for_picture_parts(hull_mask)
 
         _, connected_component, stats, _ = cv2.connectedComponentsWithStatsWithAlgorithm(single_component, 8,
                                                                                           cv2.CV_32S, cv2.CCL_GRANA)
@@ -94,8 +125,11 @@ def connected_components_segmentation(img):
         for valid_label in valid_labels:
             component = Component(valid_label, connected_component, stats[valid_label], flag)
             components.append(component)
+
+
+
     components.sort(key=lambda x: x.area, reverse=True)
-    return components, img
+    return components
 
 
 def show_vertices(img, image_vertices, with_order=True):
@@ -124,20 +158,11 @@ def rect(img, mask):
     show(img_parts, 'Picture part')
 
 
-def segmentation_rect(img_segm_rect, component):
-    if component.picture_part_flag is False:
-        img_segm_rect[component.mask == 255] = (255, 20, 20)
-    else:
-        x, y, w, h = cv2.boundingRect(component.mask)
-        img_segm_rect[y:y+h,x:x+w] = (255, 20, 20)
-    return img_segm_rect
-
-
 def segmentation(img_segm, component):
     if component.picture_part_flag is False:
-        img_segm[component.mask == 255] = (255, 20, 20)
+        img_segm[component.mask == 255] = SEGMENTATION_COLOR_RP
     else:
-        img_segm[component.mask == 255] = (100, 20, 0)
+        img_segm[component.mask == 255] = SEGMENTATION_COLOR_PP
     return img_segm
 
 
@@ -151,16 +176,17 @@ def main(name):
     img, gray = read_undistorted_image_color_grayscale(name)
     show(img, name)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
-    components, gray = connected_components_segmentation(gray)
+    components, gray = image_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
 
     img_segm = np.zeros_like(img)
-    img_segm[:, :] = (0, 240, 240)
-    img_segm_rect = np.zeros_like(img)
-    img_segm_rect[:, :] = (0, 240, 240)
+    img_segm[:, :] = SEGMENTATION_COLOR_BG
 
     for component in components:
         is_contained, global_mask = component.check_if_contained_in_another_component(global_mask)
+
+        if DEBUG:
+            show(component.mask, 'mask component')
 
         if is_contained is True:
             continue
@@ -183,19 +209,18 @@ def main(name):
             if DEBUG is True:
                 show_rectangle(img, sorted_vertices)
 
-            img_segm  = segmentation(img_segm, component)
-            img_segm_rect = segmentation_rect(img_segm_rect, component)
+            img_segm = segmentation(img_segm, component)
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:
-                show(final)
+                show(final, 'Regular picture')
 
             if component.picture_part_flag is True:
-                rect(img, component.mask)
-                show( extract_picture_parts(img, component),'component')
+                if DEBUG:
+                    rect(img, component.mask)
+                show( extract_picture_parts(img, component),'Picture part')
 
     show(img_segm, 'Segm')
-    show(img_segm_rect, 'Segm rect')
 
 
 if __name__ == '__main__':
