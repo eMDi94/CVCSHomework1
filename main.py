@@ -3,6 +3,9 @@ from htrdc import HTRDC, undistort
 from components import Component
 from parameters import *
 import os
+import sys
+import argparse
+import glob
 import numpy as np
 import cv2
 
@@ -172,15 +175,27 @@ def extract_picture_parts(img, component):
     return part
 
 
-def main(name):
-    img, gray = read_undistorted_image_color_grayscale(name)
-    show(img, name)
+def save_img(out_img, out_file_name):
+    cv2.imwrite(out_file_name, out_img)
+
+
+def overlap(img, segmentation_mask, component_color):
+    mask = segmentation_mask == component_color
+    img[mask] = cv2.addWeighted(img[mask], 0.8, segmentation_mask[mask], 0.2, 1)
+    return img
+
+
+def main(img_file_name, out_dir):
+    img, gray = read_undistorted_image_color_grayscale(img_file_name)
+    if DEBUG:
+        show(img, img_file_name)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     components, gray = image_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
 
     img_segm = np.zeros_like(img)
     img_segm[:, :] = SEGMENTATION_COLOR_BG
+    i = 0
 
     for component in components:
         is_contained, global_mask = component.check_if_contained_in_another_component(global_mask)
@@ -213,23 +228,42 @@ def main(name):
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:
-                show(final, 'Regular picture')
+                if DEBUG:
+                    show(final, 'Regular picture')
+                save_img(final, out_dir + os.path.sep + img_file_name + '_painting_' + str(i) + '.jpg')
 
             if component.picture_part_flag is True:
                 if DEBUG:
                     rect(img, component.mask)
-                show( extract_picture_parts(img, component),'Picture part')
+                p_part = extract_picture_parts(img, component)
+                if DEBUG:
+                    show(p_part,'Picture part')
+                save_img(p_part, out_dir + os.path.sep + img_file_name + '_painting_parts_' + str(i) + 'jpg')
+            i += 1
 
-    show(img_segm, 'Segm')
+    if DEBUG:
+        show(img_segm, 'Segm')
+    segmented_img = img.copy()
+    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_RP)
+    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_PP)
+    save_img(segmented_img, out_dir + os.path.sep + img_file_name + '_segmentation_result.jpg')
 
 
 if __name__ == '__main__':
-    folder = './test_images'
-    images = [img for img in os.listdir(folder)]
-    images = sorted(images)
-    for name in images:
-        print('\n------- START --------')
-        print(name)
-        main('{}/{}'.format(folder, name))
-        print('\n------- END --------\n\n')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input_dir', type=str, help='Input directory containing ONLY image files.', required=False)
+    parser.add_argument('--input_img', type=str, help='Input image file.', required=False)
+    parser.add_argument('--out_dir', type=str, help='Output directory used to store the results.', required=True)
 
+    args = parser.parse_args()
+    if args.input_dir is None and args.input_img is None:
+        print('You must specify either an input directory or an input image.')
+        sys.exit(-1)
+    else:
+        if args.input_dir is not None:
+            img_file_list = glob.glob(args.input_dir + '/**')
+        else:
+            img_file_list = [args.input_img]
+    for img_file in img_file_list:
+        file = img_file.split(os.path.sep)[-1]
+        main(file, args.out_dir)
