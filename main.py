@@ -249,6 +249,19 @@ def main(img_file_name, out_dir):
     save_img(segmented_img, out_dir + os.path.sep + img_file_name + '_segmentation_result.jpg')
 
 
+'''
+if __name__ == '__main__':
+    folder = './test_images'
+    images = [img for img in os.listdir(folder)]
+    images = sorted(images)
+    for name in images:
+        print('\n------- START --------')
+        name = '106.jpg'
+        print(name)
+        main('{}/{}'.format(folder, name))
+        print('\n------- END --------\n\n')
+'''
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, help='Input directory containing ONLY image files.', required=False)
