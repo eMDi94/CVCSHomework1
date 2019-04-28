@@ -1,1 +1,3 @@
 skimage=='0.15.0'
+scipy
+scikit-learn
