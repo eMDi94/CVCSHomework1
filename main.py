@@ -83,7 +83,6 @@ def image_segmentation(gray):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        # contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         if get_opencv_major_version(cv2.__version__) in ['2', '3']:
             mask, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         else:
@@ -139,8 +138,6 @@ def connected_components_segmentation(intermediate_global_mask):
             component = Component(valid_label, connected_component, stats[valid_label], flag)
             components.append(component)
 
-
-
     components.sort(key=lambda x: x.area, reverse=True)
     return components
 
@@ -192,11 +189,12 @@ def save_img(out_img, out_file_name):
 
 def overlap(img, segmentation_mask, component_color, out_color):
     mask = segmentation_mask == component_color
+    if np.sum(mask) == 0:
+        return img
     mask = np.all(mask, axis=2)
     img2 = np.zeros_like(img, dtype=np.uint8)
     img2[mask] = out_color
-    if img[mask].size != 0 or img2[mask].size != 0:
-        img[mask] = cv2.addWeighted(img[mask], 0.8, img2[mask], 0.2, 1)
+    img[mask] = cv2.addWeighted(img[mask], 0.8, img2[mask], 0.2, 1)
     return img
 
 
@@ -283,19 +281,6 @@ def main(img_file_name, out_dir):
     save_img(segmented_img, out_folder + '/' + img_file_name + '_segmentation_result.jpg')
     print('End processing image ', filename)
 
-
-'''
-if __name__ == '__main__':
-    folder = './test_images'
-    images = [img for img in os.listdir(folder)]
-    images = sorted(images)
-    for name in images:
-        print('\n------- START --------')
-        name = '106.jpg'
-        print(name)
-        main('{}/{}'.format(folder, name))
-        print('\n------- END --------\n\n')
-'''
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
