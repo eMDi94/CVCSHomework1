@@ -320,3 +320,8 @@ def rectify_image(img, corners):
         print("rectify_img -- new_vertices:\n", new_vertices)
     mat = cv2.getPerspectiveTransform(corners, new_vertices)
     return cv2.warpPerspective(img, mat, (w, h))
+
+
+def get_opencv_major_version(version):
+    major, _, _ = version.split('.')
+    return major

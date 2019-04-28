@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import glob
+import errno
 import numpy as np
 import cv2
 
@@ -110,7 +111,11 @@ def connected_components_segmentation(intermediate_global_mask):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        if get_opencv_major_version(cv2.__version__) in ['2', '3']:
+            mask, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
@@ -176,19 +181,42 @@ def extract_picture_parts(img, component):
 
 
 def save_img(out_img, out_file_name):
-    cv2.imwrite(out_file_name, out_img)
+    print('Saving ', out_file_name)
+    return cv2.imwrite(out_file_name, out_img)
 
 
-def overlap(img, segmentation_mask, component_color):
+def overlap(img, segmentation_mask, component_color, out_color):
     mask = segmentation_mask == component_color
-    img[mask] = cv2.addWeighted(img[mask], 0.8, segmentation_mask[mask], 0.2, 1)
+    mask = np.all(mask, axis=2)
+    img2 = np.zeros_like(img, dtype=np.uint8)
+    img2[mask] = out_color
+    img[mask] = cv2.addWeighted(img[mask], 0.8, img2[mask], 0.2, 1)
     return img
 
 
+def get_only_file_name(img_file):
+    sep = img_file.split(os.path.sep)
+    if len(sep) == 1:
+        sep = img_file.split('/')
+    file = sep[-1]
+    file = file.split('.')[0]
+    return file
+
+
 def main(img_file_name, out_dir):
-    img, gray = read_undistorted_image_color_grayscale(img_file_name)
-    if DEBUG:
+    filename = img_file_name
+    img_file_name = get_only_file_name(filename)
+    print('Starting processing image ', filename)
+    img, gray = read_undistorted_image_color_grayscale(filename)
+    if DEBUG is True:
         show(img, img_file_name)
+    out_folder = out_dir + '/' + img_file_name
+    try:
+        os.makedirs(out_folder)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            print('There were some problem during the creation of folder ', out_folder, '. Skipping image ', img_file_name)
+            return
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     components, gray = image_segmentation(gray)
     global_mask = np.zeros_like(gray, dtype=np.uint8)
@@ -200,7 +228,7 @@ def main(img_file_name, out_dir):
     for component in components:
         is_contained, global_mask = component.check_if_contained_in_another_component(global_mask)
 
-        if DEBUG:
+        if DEBUG is True:
             show(component.mask, 'mask component')
 
         if is_contained is True:
@@ -228,25 +256,26 @@ def main(img_file_name, out_dir):
 
             final = rectify_image(img, sorted_vertices)
             if final is not None and component.picture_part_flag is False:
-                if DEBUG:
+                if DEBUG is True:
                     show(final, 'Regular picture')
-                save_img(final, out_dir + os.path.sep + img_file_name + '_painting_' + str(i) + '.jpg')
+                save_img(final, out_folder + '/' + img_file_name + '_painting_' + str(i) + '.jpg')
 
             if component.picture_part_flag is True:
-                if DEBUG:
+                if DEBUG is True:
                     rect(img, component.mask)
                 p_part = extract_picture_parts(img, component)
-                if DEBUG:
+                if DEBUG is True:
                     show(p_part,'Picture part')
-                save_img(p_part, out_dir + os.path.sep + img_file_name + '_painting_parts_' + str(i) + 'jpg')
+                save_img(p_part, out_folder + '/' + img_file_name + '_painting_parts_' + str(i) + '.jpg')
             i += 1
 
-    if DEBUG:
+    if DEBUG is True:
         show(img_segm, 'Segm')
     segmented_img = img.copy()
-    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_RP)
-    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_PP)
-    save_img(segmented_img, out_dir + os.path.sep + img_file_name + '_segmentation_result.jpg')
+    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_RP, SEGMENTATION_COLOR_RP_OUT)
+    segmented_img = overlap(segmented_img, img_segm, SEGMENTATION_COLOR_PP, SEGMENTATION_COLOR_PP_OUT)
+    save_img(segmented_img, out_folder + '/' + img_file_name + '_segmentation_result.jpg')
+    print('End processing image ', filename)
 
 
 '''
@@ -274,9 +303,18 @@ if __name__ == '__main__':
         sys.exit(-1)
     else:
         if args.input_dir is not None:
+            if args.input_dir[-1] == '/':
+                args.input_dir = args.input_dir[:-1]
             img_file_list = glob.glob(args.input_dir + '/**')
         else:
             img_file_list = [args.input_img]
+    if args.out_dir[-1] == '/':
+        args.out_dir = args.out_dir[:-1]
+    try:
+        os.makedirs(args.out_dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            print('There were some problem accessing the output folder.')
+            sys.exit(-1)
     for img_file in img_file_list:
-        file = img_file.split(os.path.sep)[-1]
-        main(file, args.out_dir)
+        main(img_file, args.out_dir)
