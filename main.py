@@ -195,7 +195,8 @@ def overlap(img, segmentation_mask, component_color, out_color):
     mask = np.all(mask, axis=2)
     img2 = np.zeros_like(img, dtype=np.uint8)
     img2[mask] = out_color
-    img[mask] = cv2.addWeighted(img[mask], 0.8, img2[mask], 0.2, 1)
+    if img[mask].size != 0 or img2[mask].size != 0:
+        img[mask] = cv2.addWeighted(img[mask], 0.8, img2[mask], 0.2, 1)
     return img
 
 
