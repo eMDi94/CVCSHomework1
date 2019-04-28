@@ -83,7 +83,12 @@ def image_segmentation(gray):
         mask[labeled_img == label] = 255
 
         # Compute the convex hull
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        if get_opencv_major_version(cv2.__version__) in ['2', '3']:
+            mask, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
         hull = []
         for cnt in contours:
             hull.append(cv2.convexHull(cnt, False))
