@@ -137,6 +137,12 @@ def remove_small_connectedComponents(labeled_img, threshold):
     return img
 
 
+def find_centroid(p1, p2, p3, p4):
+    ma = find_midpoint(p1, p2)
+    mb = find_midpoint(p3, p4)
+    return find_midpoint(ma, mb)
+
+
 def sort_corners(corners):
     """
     Sort corners starting from top left one and going clockwise
@@ -144,13 +150,15 @@ def sort_corners(corners):
     :return: sorted corners
     """
     # find the "center"
-    c = find_intersection(corners[0], corners[2], corners[1], corners[3])
+    c = find_centroid(corners[0], corners[2], corners[1], corners[3])
     if not (min(corners[0][0], corners[2][0]) <= c[0] <= max(corners[0][0], corners[2][0])
         and min(corners[0][1], corners[2][1]) <= c[1] <= max(corners[0][1], corners[2][1])):
-        c = find_intersection(corners[0], corners[1], corners[3], corners[2])
+        c = find_centroid(corners[0], corners[1], corners[3], corners[2])
         if not (min(corners[0][0], corners[1][0]) <= c[0] <= max(corners[0][0], corners[1][0])
             and min(corners[0][1], corners[1][1]) <= c[1] <= max(corners[0][1], corners[1][1])):
-            c = find_intersection(corners[0], corners[3], corners[1], corners[2])
+            c = find_centroid(corners[0], corners[3], corners[1], corners[2])
+    if DEBUG:
+        print("sort_corners -- c:\n", c)
     # get angle with each point
     a0 = find_angle_with_horizontal(c, corners[0])
     a1 = find_angle_with_horizontal(c, corners[1])
@@ -301,20 +309,39 @@ def find_biggest_halfrectangle(p1, p2, p3, p4):
         return np.array([m12, p2, m23, c], dtype=np.int), RECTANGLE_SECTOR_TR
 
 
+def limit_image_size(w, h):
+    max_w, max_h = OUTPUT_PICTURE_SIZE_THRESH_W_H
+    if w <= max_w and h <= max_h:
+        return w, h
+    ratio = min(max_w / w, max_h / h)
+    return int(w * ratio), int(h * ratio)
+
+
 def rectify_image(img, corners):
     assert corners.shape == (4, 2), 'corners.shape must be (4, 2)'
-
     corners = corners.astype(np.float32)
     if DEBUG:
         print("rectify_img -- corners:\n", corners)
     new_vertices = corners.copy()
+    iterations = RECTIFY_IMAGE_ITER
     for i in range(RECTIFY_IMAGE_ITER):
         new_vertices, sector = find_biggest_halfrectangle(new_vertices[0], new_vertices[1],
                                                           new_vertices[2], new_vertices[3])
-    w = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[0], new_vertices[1]),
-                                            find_distance(new_vertices[2], new_vertices[3])))
-    h = int((2 ** RECTIFY_IMAGE_ITER) * max(find_distance(new_vertices[1], new_vertices[2]),
-                                            find_distance(new_vertices[3], new_vertices[0])))
+        if min(find_distance_squared(new_vertices[0], new_vertices[1]),
+               find_distance_squared(new_vertices[2], new_vertices[3])) < 7**2:
+            iterations = i
+            if DEBUG:
+                print("rectify_image -- new_vertices distance {} too low, breaking at {} loop iteration.".format(
+                      min(find_distance(new_vertices[0], new_vertices[1]),
+                          find_distance(new_vertices[2], new_vertices[3])),
+                      iterations))
+            break
+
+    w = int((2 ** iterations) * max(find_distance(new_vertices[0], new_vertices[1]),
+                                    find_distance(new_vertices[2], new_vertices[3])))
+    h = int((2 ** iterations) * max(find_distance(new_vertices[1], new_vertices[2]),
+                                    find_distance(new_vertices[3], new_vertices[0])))
+    w, h = limit_image_size(w, h)
     new_vertices = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
     if DEBUG:
         print("rectify_img -- new_vertices:\n", new_vertices)

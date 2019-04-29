@@ -25,7 +25,7 @@ def resize_when_too_big(img, threshold_w_h):
 
 def read_undistorted_image_color_grayscale(img_file):
     img = cv2.imread(img_file)
-    img = resize_when_too_big(img, PICTURE_SIZE_THRESH_W_H)
+    img = resize_when_too_big(img, INPUT_PICTURE_SIZE_THRESH_W_H)
     gray = convert_to(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, BLURRING_GAUSSIAN_KERNEL_SIZE, BLURRING_GAUSSIAN_SIGMA)
     edges = cv2.Canny(gray, CANNY_THRESHOLD_LOW, CANNY_THRESHOLD_HIGH)
@@ -142,13 +142,14 @@ def connected_components_segmentation(intermediate_global_mask):
     return components
 
 
-def show_vertices(img, image_vertices, with_order=True):
-    print("vertices:\n",image_vertices)
+def show_vertices(img, image_vertices):
+    if DEBUG:
+        print("vertices:\n",image_vertices)
     img_c = img.copy()
     colors = [(255, 0, 0), (0, 255, 0), (0, 255, 255), (0, 0, 255)] #B G Y R
     for i in range(len(image_vertices)):
         vertex = tuple(image_vertices[i])
-        img_c = cv2.circle(img_c, vertex, 4, colors[i], thickness=-5-i)
+        img_c = cv2.circle(img_c, vertex, 4, colors[i], thickness=-1)
     show(img_c)
 
 
@@ -178,7 +179,7 @@ def segmentation(img_segm, component):
 
 def extract_picture_parts(img, component):
     x, y, w, h = cv2.boundingRect(component.mask)
-    part = img[y:y+h,x:x+w]
+    part = img[y : y+h, x : x+w]
     return part
 
 
@@ -248,10 +249,10 @@ def main(img_file_name, out_dir):
 
         if len(image_vertices) == 4:
             if DEBUG is True:
-                show_vertices(img, image_vertices, with_order=True)
+                show_vertices(img, image_vertices)
             sorted_vertices = sort_corners(image_vertices)
             if DEBUG is True:
-                show_vertices(img, sorted_vertices, with_order=True)
+                show_vertices(img, sorted_vertices)
 
             if DEBUG is True:
                 show_rectangle(img, sorted_vertices)
